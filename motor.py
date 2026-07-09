@@ -1,33 +1,90 @@
-from machine import Pin
-from time import sleep_ms
+"""
+Prueba simple del motor: gira continuamente en sentido horario.
+Detener con Ctrl+C.
+"""
+
+import time
+
+try:
+    import RPi.GPIO as GPIO
+    IS_RPI = True
+except (ImportError, RuntimeError):
+    IS_RPI = False
+    print("⚠️ RPi.GPIO no disponible (modo simulado)")
+
+    class GPIO:
+        BCM = "BCM"
+        OUT = "OUT"
+        LOW = 0
+        HIGH = 1
+
+        @staticmethod
+        def setmode(mode):
+            pass
+
+        @staticmethod
+        def setup(pin, mode):
+            pass
+
+        @staticmethod
+        def output(pin, val):
+            pass
+
+        @staticmethod
+        def cleanup():
+            pass
+
 
 # ==========================
 # Pines del L298N
 # ==========================
 BELT_IN_PINS = [5, 6, 13, 19]
 
-IN1 = Pin(BELT_IN_PINS[0], Pin.OUT)
-IN2 = Pin(BELT_IN_PINS[1], Pin.OUT)
-IN3 = Pin(BELT_IN_PINS[2], Pin.OUT)
-IN4 = Pin(BELT_IN_PINS[3], Pin.OUT)
-
 # ==========================
 # Secuencia Full Step
 # ==========================
-SECUENCIA = (
+STEP_SEQUENCE = [
     (1, 0, 1, 0),
     (0, 1, 1, 0),
     (0, 1, 0, 1),
     (1, 0, 0, 1),
-)
+]
 
-paso = 0
+STEP_DELAY = 0.003  # 3 ms
 
-while True:
-    IN1.value(SECUENCIA[paso][0])
-    IN2.value(SECUENCIA[paso][1])
-    IN3.value(SECUENCIA[paso][2])
-    IN4.value(SECUENCIA[paso][3])
 
-    paso = (paso + 1) % 4
-    sleep_ms(3)
+def setup_pins(pins):
+    GPIO.setmode(GPIO.BCM)
+
+    for pin in pins:
+        GPIO.setup(pin, GPIO.OUT)
+        GPIO.output(pin, GPIO.LOW)
+
+
+def set_step(pins, step):
+    for pin, value in zip(pins, step):
+        GPIO.output(pin, GPIO.HIGH if value else GPIO.LOW)
+
+
+def motor_clockwise():
+    print("▶ Motor girando continuamente... (Ctrl+C para detener)")
+
+    paso = 0
+
+    try:
+        while True:
+            set_step(BELT_IN_PINS, STEP_SEQUENCE[paso])
+            paso = (paso + 1) % 4
+            time.sleep(STEP_DELAY)
+
+    except KeyboardInterrupt:
+        print("\nDeteniendo motor...")
+
+    finally:
+        set_step(BELT_IN_PINS, (0, 0, 0, 0))
+        GPIO.cleanup()
+
+
+if __name__ == "__main__":
+    setup_pins(BELT_IN_PINS)
+    motor_clockwise()
