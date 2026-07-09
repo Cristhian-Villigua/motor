@@ -1,70 +1,33 @@
-"""
-Prueba simple del motor: gira SOLO en sentido horario durante N segundos.
-No depende de stepper_belt.py ni modifica ningún flujo existente.
-"""
+from machine import Pin
+from time import sleep_ms
 
-import time
+# ==========================
+# Pines del L298N
+# ==========================
+BELT_IN_PINS = [5, 6, 13, 19]
 
-try:
-    import RPi.GPIO as GPIO
-    IS_RPI = True
-except (ImportError, RuntimeError):
-    IS_RPI = False
-    print("⚠️ RPi.GPIO no disponible (modo simulado)")
+IN1 = Pin(BELT_IN_PINS[0], Pin.OUT)
+IN2 = Pin(BELT_IN_PINS[1], Pin.OUT)
+IN3 = Pin(BELT_IN_PINS[2], Pin.OUT)
+IN4 = Pin(BELT_IN_PINS[3], Pin.OUT)
 
-    class GPIO:
-        BCM = "BCM"
-        OUT = "OUT"
-        LOW = 0
-        HIGH = 1
-        @staticmethod
-        def setmode(mode): pass
-        @staticmethod
-        def setup(pin, mode): pass
-        @staticmethod
-        def output(pin, val): pass
-
-# Secuencia de 4 pasos completos para L298N (sentido horario)
-STEP_SEQUENCE = [
+# ==========================
+# Secuencia Full Step
+# ==========================
+SECUENCIA = (
     (1, 0, 1, 0),
     (0, 1, 1, 0),
     (0, 1, 0, 1),
     (1, 0, 0, 1),
-]
+)
 
-STEP_DELAY = 0.003
-BELT_IN_PINS = [5, 6, 13, 19]
+paso = 0
 
-DURATION_S = 15.0  # tiempo de la prueba
+while True:
+    IN1.value(SECUENCIA[paso][0])
+    IN2.value(SECUENCIA[paso][1])
+    IN3.value(SECUENCIA[paso][2])
+    IN4.value(SECUENCIA[paso][3])
 
-
-def setup_pins(pins):
-    if IS_RPI:
-        GPIO.setmode(GPIO.BCM)
-    for p in pins:
-        GPIO.setup(p, GPIO.OUT)
-        GPIO.output(p, GPIO.LOW)
-
-
-def set_step(pins, step):
-    for pin, val in zip(pins, step):
-        GPIO.output(pin, GPIO.HIGH if val else GPIO.LOW)
-
-
-def run_clockwise(pins, duration_s):
-    print(f"🧪 Girando en sentido horario durante {duration_s}s...")
-    start = time.time()
-    i = 0
-    while (time.time() - start) < duration_s:
-        step = STEP_SEQUENCE[i % len(STEP_SEQUENCE)]
-        set_step(pins, step)
-        time.sleep(STEP_DELAY)
-        i += 1
-    # Apagar bobinas al terminar
-    set_step(pins, (0, 0, 0, 0))
-    print("✅ Prueba finalizada.")
-
-
-if __name__ == "__main__":
-    setup_pins(BELT_IN_PINS)
-    run_clockwise(BELT_IN_PINS, DURATION_S)
+    paso = (paso + 1) % 4
+    sleep_ms(3)
