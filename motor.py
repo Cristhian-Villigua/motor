@@ -1,80 +1,51 @@
-"""
-This Raspberry Pi code was developed by newbiely.com
-This Raspberry Pi code is made available for public use without any restriction
-For comprehensive instructions and wiring diagrams, please visit:
-https://newbiely.com/tutorials/raspberry-pi/raspberry-pi-stepper-motor
-"""
-
-
 import RPi.GPIO as GPIO
 import time
 
-# Define GPIO pins for L298N driver
 IN1 = 12
 IN2 = 16
 IN3 = 20
 IN4 = 21
 
-# Set GPIO mode and configure pins
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(IN1, GPIO.OUT)
-GPIO.setup(IN2, GPIO.OUT)
-GPIO.setup(IN3, GPIO.OUT)
-GPIO.setup(IN4, GPIO.OUT)
 
-# Constants for stepper motor control
-DEG_PER_STEP = 1.8
-STEP_PER_REVOLUTION = int(360 / DEG_PER_STEP)
+for pin in (IN1, IN2, IN3, IN4):
+    GPIO.setup(pin, GPIO.OUT)
+    GPIO.output(pin, 0)
 
-# Function to move the stepper motor one step forward
-def step_forward(delay, steps):
+sequence = [
+    [1,0,1,0],
+    [0,1,1,0],
+    [0,1,0,1],
+    [1,0,0,1]
+]
+
+def step_forward(steps, delay):
     for _ in range(steps):
-        GPIO.output(IN1, GPIO.HIGH)
-        GPIO.output(IN2, GPIO.HIGH)
-        GPIO.output(IN3, GPIO.LOW)
-        GPIO.output(IN4, GPIO.LOW)
-        time.sleep(delay)
-        
-        GPIO.output(IN1, GPIO.LOW)
-        GPIO.output(IN2, GPIO.HIGH)
-        GPIO.output(IN3, GPIO.HIGH)
-        GPIO.output(IN4, GPIO.LOW)
-        time.sleep(delay)
+        for step in sequence:
+            GPIO.output(IN1, step[0])
+            GPIO.output(IN2, step[1])
+            GPIO.output(IN3, step[2])
+            GPIO.output(IN4, step[3])
+            time.sleep(delay)
 
-# Function to move the stepper motor one step backward
-def step_backward(delay, steps):
+def step_backward(steps, delay):
     for _ in range(steps):
-        GPIO.output(IN1, GPIO.LOW)
-        GPIO.output(IN2, GPIO.LOW)
-        GPIO.output(IN3, GPIO.HIGH)
-        GPIO.output(IN4, GPIO.HIGH)
-        time.sleep(delay)
-        
-        GPIO.output(IN1, GPIO.HIGH)
-        GPIO.output(IN2, GPIO.LOW)
-        GPIO.output(IN3, GPIO.LOW)
-        GPIO.output(IN4, GPIO.HIGH)
-        time.sleep(delay)
+        for step in reversed(sequence):
+            GPIO.output(IN1, step[0])
+            GPIO.output(IN2, step[1])
+            GPIO.output(IN3, step[2])
+            GPIO.output(IN4, step[3])
+            time.sleep(delay)
 
 try:
-    # Set the delay between steps
-    delay = 0.001
     while True:
-        # Move the stepper motor one revolution in a clockwise direction
-        step_forward(delay, STEP_PER_REVOLUTION)
-
-        # Pause for 5 seconds
-        time.sleep(5)
-
-        # Move the stepper motor one revolution in an anticlockwise direction
-        step_backward(delay, STEP_PER_REVOLUTION)
-
-        # Halt for 5 seconds
-        time.sleep(5)
+        step_forward(200, 0.005)
+        time.sleep(1)
+        step_backward(200, 0.005)
+        time.sleep(1)
 
 except KeyboardInterrupt:
-    print("\nExiting the script.")
+    pass
 
 finally:
-    # Clean up GPIO settings
     GPIO.cleanup()
